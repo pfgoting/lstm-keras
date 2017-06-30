@@ -1,1 +1,1 @@
-# lstm-keras
+# tutorial-lstm
