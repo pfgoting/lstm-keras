@@ -111,7 +111,7 @@ data = np.arange(1,51,.10)
 # load dataset
 # series = pd.Series(data)
 # series = pd.read_csv(airplane, header=0,
-                 # parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+#                  parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
 series = pd.read_csv(sp500,squeeze=True)
 # series = pd.read_hdf('cex-data.hdf','cex-1d').closing
 

@@ -13,6 +13,9 @@ import time
 def parser(x):
     return pd.datetime.strptime('190'+x, '%Y-%m')
 
+def parser2(x):
+    return pd.datetime.strptime(x,'%Y-%m')
+
 # create a df to have a supervised learning problem
 def timeseries_to_supervised(data,lag=1):
     df = pd.DataFrame(data)
@@ -52,7 +55,7 @@ def prepare_data(series, n_seq):
     return scaler, train, test
 
 # fit an LSTM network to training data
-def fit_lstm1(train, n_batch, nb_epoch, n_neurons, n_lag):
+def fit_lstm_stateful(train, n_batch, nb_epoch, n_neurons, n_lag):
     # reshape training into [samples, timesteps, features]
     X, y = train[:, 0:n_lag], train[:, n_lag:]
     X = X.reshape(X.shape[0], 1, X.shape[1])
@@ -66,7 +69,7 @@ def fit_lstm1(train, n_batch, nb_epoch, n_neurons, n_lag):
     loss = []
     val_loss = []
     for i in range(nb_epoch):
-        print "{}/{} epoch".format(i+1,nb_epoch)
+        print ("{}/{} epoch".format(i+1,nb_epoch))
         history = model.fit(X, y, epochs=1, batch_size=n_batch, verbose=1, shuffle=False, validation_split=0.05)
         loss.append(history.history['loss'])
         val_loss.append(history.history['val_loss'])
@@ -83,7 +86,7 @@ def fit_lstm1(train, n_batch, nb_epoch, n_neurons, n_lag):
     plt.show()
     return model
 
-def fit_lstm2(train, n_batch, nb_epoch, n_neurons, n_lag):
+def fit_lstm_stateless(train, n_batch, nb_epoch, n_neurons, n_lag):
     # reshape training into [samples, timesteps, features]
     X, y = train[:, 0:n_lag], train[:, n_lag:]
     X = X.reshape(X.shape[0], 1, X.shape[1])
@@ -94,7 +97,7 @@ def fit_lstm2(train, n_batch, nb_epoch, n_neurons, n_lag):
     model.add(Dense(y.shape[1]))
     model.compile(loss='mean_squared_error', optimizer='adam')
 
-    history = model.fit(X, y, epochs=100, batch_size=32, verbose=1,validation_split=0.05)
+    history = model.fit(X, y, epochs=nb_epoch, batch_size=n_batch, verbose=1,validation_split=0.05)
     # summarize history for loss
     plt.figure()
     plt.plot(history.history['loss'],label='loss')
@@ -106,7 +109,7 @@ def fit_lstm2(train, n_batch, nb_epoch, n_neurons, n_lag):
     plt.show()
     return model
 
-def fit_lstm(train, n_batch, nb_epoch, n_neurons, n_lag):
+def fit_lstm_jakob(train, n_batch, nb_epoch, n_neurons, n_lag):
     # reshape training into [samples, timesteps, features]
     X, y = train[:, 0:n_lag], train[:, n_lag:]
     X = X.reshape(X.shape[0], 1, X.shape[1])
@@ -115,7 +118,7 @@ def fit_lstm(train, n_batch, nb_epoch, n_neurons, n_lag):
 
     model.add(LSTM(
         50,
-        input_dim=1,
+        input_shape=(1,1),
         return_sequences=True))
     model.add(Dropout(0.2))
 
@@ -211,7 +214,7 @@ def plot_forecasts(series,actual,forecasts):
 
 if __name__ == '__main__':
     # init values
-    n_epochs = 2
+    n_epochs = 1000
     n_batch = 1
     n_neurons = 4
     n_lag = 1 # columns
@@ -219,12 +222,15 @@ if __name__ == '__main__':
     n_steps = 10
     # load data
     # series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
-    series = pd.read_csv('sp500.csv',squeeze=True)
+    # series = pd.read_csv('sp500.csv',squeeze=True)
+    series = pd.read_csv('international-airline-passengers.csv', header=0,
+                 parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
 
     # prepare data
     scaler, train, test = prepare_data(series,n_seq)
     # fit model
-    model = fit_lstm(train,n_batch,n_epochs,n_neurons,n_lag)
+    # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
+    model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
     # forecast forward
     forecasts = forecast_lstm(model, test, n_batch)
     # forecast sliding
@@ -233,10 +239,11 @@ if __name__ == '__main__':
     forecasts = inverse_transform(series,forecasts,scaler,len(test))
     actual = [row[n_lag:] for row in test]
     actual = inverse_transform(series,actual,scaler,len(test))
+    # original = [row[0:] for row in test]
     # evaluate forecasts
     evaluate_forecasts(actual, forecasts, n_lag, len(test))
-    print series.values[-1]
-    print actual[-1]
-    print forecasts[-1]
-    # plot forecasts
-    plot_forecasts(series,actual,forecasts)
+    # print series.values[-1]
+    # print actual[-1]
+    # print forecasts[-1]
+    # # plot forecasts
+    plot_forecasts(actual,forecasts)
