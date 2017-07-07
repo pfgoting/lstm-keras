@@ -103,16 +103,16 @@ t0 = time.time()
 
 # input files
 shampoo = 'shampoo-sales.csv'
-airplane = 'international-airline-passengers.csv'
+airline = 'international-airline-passengers.csv'
 sp500 = 'sp500.csv'
 sin = 'sinwave.csv'
 data = np.arange(1,51,.10)
 
 # load dataset
 # series = pd.Series(data)
-# series = pd.read_csv(airplane, header=0,
-#                  parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
-series = pd.read_csv(sp500,squeeze=True)
+series = pd.read_csv(airline, header=0,
+                 parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
+# series = pd.read_csv(sp500,squeeze=True)
 # series = pd.read_hdf('cex-data.hdf','cex-1d').closing
 
 # 1. transform data to be stationary
@@ -173,53 +173,64 @@ def repeat_exp(repeats=2):
 
 # def one_exp():
 # fit the model
-lstm_model = fit_lstm(train_scaled, 1, 50, 4) # 1 batch, 3000 epoch, 4 neurons
+lstm_model = fit_lstm(train_scaled, 1, 200, 10) # 1 batch, 3000 epoch, 4 neurons
 # forecast the entire training dataset to build up state for forecasting
 # train_reshaped = train_scaled[:,0].reshape(len(train_scaled), 1, 1)
 # lstm_model.predict(train_reshaped, batch_size=1)
+def all_prediction():
+    # forecast test
+    test_reshaped = test_scaled[:,0].reshape(len(test_scaled), 1, 1)
+    predictions = lstm_model.predict(test_reshaped,batch_size=1)
 
-# forecast test
-# test_reshaped = test_scaled[:,0].reshape(len(test_scaled), 1, 1)
-# predictions = lstm_model.predict(test_reshaped,batch_size=1)
+    # revert predictions
+    final_pred = []
+    for i in range(len(predictions)):
+        X, y = test_scaled[i,0:-1], test_scaled[i, -1]
+    	# invert scaling
+        yhat = invert_scale(scaler,X,predictions[i])
+        # invert differencing
+        yhat = inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
+        final_pred.append(yhat)
+    return final_pred
 
-# revert predictions
-# final_pred = []
-# for y in range(len(predictions)):
-	# invert scaling
-	# yhat = invert_scale(scaler, X, y)
-
-
-# walk-forward validation on the test data
-predictions = list()
-p = []
-trained = list()
-for i in range(len(test_scaled)):
-    # make one-step forecast
-    X, y = test_scaled[i,0:-1], test_scaled[i, -1]
-    yhat = forecast_lstm(lstm_model, 1, X)
-    p.append(yhat)
-    # yhat = y
-    # invert scaling
-    yhat = invert_scale(scaler, X, yhat)
-    y = invert_scale(scaler,X,y)
-    # invert differencing
-    yhat = inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
-    y = inverse_difference(raw_values, y, len(train_scaled)+1-i)
-    # store forecast
-    predictions.append(yhat)
-    trained.append(y)
-    expected = raw_values[len(train)+i+1]
-    print('Month=%d, Predicted=%f, Expected=%f' % (i+1, yhat, expected))
+def walk_forward_prediction():
+    # walk-forward validation on the test data
+    predictions = list()
+    p = []
+    trained = list()
+    for i in range(len(test_scaled)):
+        # make one-step forecast
+        X, y = test_scaled[i,0:-1], test_scaled[i, -1]
+        print X,y
+        yhat = forecast_lstm(lstm_model, 1, X)
+        p.append(yhat)
+        # yhat = y
+        # invert scaling
+        yhat = invert_scale(scaler, X, yhat)
+        y = invert_scale(scaler,X,y)
+        # invert differencing
+        yhat = inverse_difference(raw_values, yhat, len(test_scaled)+1-i)
+        y = inverse_difference(raw_values, y, len(train_scaled)+1-i)
+        # store forecast
+        predictions.append(yhat)
+        trained.append(y)
+        expected = raw_values[len(train)+i+1]
+        print('Month=%d, Predicted=%f, Expected=%f' % (i+1, yhat, expected))
+    return predictions
 
 # report performance
+predictions = walk_forward_prediction()
+final_pred = all_prediction()
 rmse = sqrt(mean_squared_error(raw_values[-len(test):], predictions))
-print 'Test RMSE: %.3f' % rmse
+print 'RMSE walk: %.3f' % rmse
+rmse = sqrt(mean_squared_error(raw_values[-len(test):], final_pred))
+print 'RMSE one: %.3f' % rmse
 plt.plot(raw_values[-len(test):],label='raw')
-plt.plot(predictions,label='predicted')
-plt.plot(trained,label='trained')
+plt.plot(predictions,label='walk predicted')
+# plt.plot(trained,label='trained')
+plt.plot(final_pred,label='final pred')
 plt.legend()
 plt.show()
-# one_exp()
 t1 = time.time()
 dt = t1-t0
 print "Time to train model: {}".format(dt)

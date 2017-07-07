@@ -8,6 +8,9 @@ from keras.layers import Dense, Dropout, Activation
 from keras.layers import LSTM
 import numpy as np
 import time
+import os, warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' #Hide messy TensorFlow warnings
+warnings.filterwarnings("ignore") #Hide messy Numpy warnings
 
 # date-time parsing function for loading the dataset
 def parser(x):
@@ -214,7 +217,7 @@ def plot_forecasts(series,actual,forecasts):
 
 if __name__ == '__main__':
     # init values
-    n_epochs = 1000
+    n_epochs = 10
     n_batch = 1
     n_neurons = 4
     n_lag = 1 # columns
@@ -230,7 +233,7 @@ if __name__ == '__main__':
     scaler, train, test = prepare_data(series,n_seq)
     # fit model
     # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
-    model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
+    model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
     # forecast forward
     forecasts = forecast_lstm(model, test, n_batch)
     # forecast sliding
