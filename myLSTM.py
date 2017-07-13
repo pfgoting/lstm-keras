@@ -37,7 +37,7 @@ def difference(dataset, interval=1):
     return pd.Series(diff)
 
 # transform series into train and test sets for supervised learning
-def prepare_data(series, n_seq):
+def prepare_data(series, n_seq, exp):
     # extract raw values
     raw_values = series.values
     # transform data to be stationary
@@ -48,14 +48,18 @@ def prepare_data(series, n_seq):
     scaler = MinMaxScaler(feature_range=(-1, 1))
     scaled_values = scaler.fit_transform(diff_values)
     scaled_values = scaled_values.reshape(len(scaled_values), 1)
-    # transform into supervised learning problem X, y
-    supervised = timeseries_to_supervised(scaled_values, 1)
-    supervised_values = supervised.values
-    # split data into train and test
-    train_size = int(len(supervised_values) * n_seq)
-    test_size = len(supervised_values) - train_size
-    train, test = supervised_values[0:train_size,:], supervised_values[train_size:len(supervised_values),:]
-    return scaler, train, test
+
+    if exp:
+        # transform into supervised learning problem X, y
+        supervised = timeseries_to_supervised(scaled_values, 1)
+        supervised_values = supervised.values
+        # split data into train and test
+        train_size = int(len(supervised_values) * n_seq)
+        test_size = len(supervised_values) - train_size
+        train, test = supervised_values[0:train_size,:], supervised_values[train_size:len(supervised_values),:]
+        return scaler, train, test
+    else:
+        return scaler, scaled_values
 
 # fit an LSTM network to training data
 def fit_lstm_stateful(train, n_batch, nb_epoch, n_neurons, n_lag):
@@ -198,42 +202,30 @@ def inverse_transform(series, forecasts, scaler, n_test):
 
 # evaluate the RMSE for each forecast time step
 def evaluate_forecasts(test, forecasts, n_lag, n_seq):
-    # for i in range(n_seq):
-    #     actual = [test[i][0]]
-    #     predicted = [forecasts[i][0]]
-    actual = [test[-1][0]]
-    predicted = [test[-1][0]]
-    rmse = sqrt(mean_squared_error(actual, predicted))
-    print('t+%d RMSE: %f' % (len(test), rmse))
+    for i in range(n_seq):
+        actual = [test[i][0]]
+        predicted = [forecasts[i][0]]
+    # actual = [test[-1][0]]
+    # predicted = [test[-1][0]]
+        rmse = sqrt(mean_squared_error(actual, predicted))
+        print('t+%d RMSE: %f' % (len(test), rmse))
 
 # plotting
 def plot_forecasts(series,actual,forecasts):
     plt.figure()
-    plt.plot(series.values[-len(actual):],label='original data')
+    # plt.plot(series.values[-len(actual):],label='original data')
     plt.plot(actual,label='test data')
     plt.plot(forecasts,label='predicted data')
     plt.legend()
     plt.show()
 
-if __name__ == '__main__':
-    # init values
-    n_epochs = 10
-    n_batch = 1
-    n_neurons = 4
-    n_lag = 1 # columns
-    n_seq = 0.67 # no of test vals
-    n_steps = 10
-    # load data
-    # series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
-    # series = pd.read_csv('sp500.csv',squeeze=True)
-    series = pd.read_csv('international-airline-passengers.csv', header=0,
-                 parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
-
+def experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps):
     # prepare data
-    scaler, train, test = prepare_data(series,n_seq)
+    scaler, train, test = prepare_data(series,n_seq,exp=True)
     # fit model
     # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
-    model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
+    # model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
+    model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
     # forecast forward
     forecasts = forecast_lstm(model, test, n_batch)
     # forecast sliding
@@ -248,5 +240,44 @@ if __name__ == '__main__':
     # print series.values[-1]
     # print actual[-1]
     # print forecasts[-1]
-    # # plot forecasts
-    plot_forecasts(actual,forecasts)
+    # plot forecasts
+    plot_forecasts(series,actual,forecasts)
+    return model,forecasts,actual
+
+
+
+
+if __name__ == '__main__':
+    # init values
+    n_epochs = 500
+    n_batch = 1
+    n_neurons = 4
+    n_lag = 1 # columns
+    n_seq = 0.67 # no of test vals
+    n_steps = 10
+    # load data
+    # series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+    # series = pd.read_csv('sp500.csv',squeeze=True)
+    # series = pd.read_csv('international-airline-passengers.csv', header=0,
+                 # parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
+    data1d = pd.read_hdf('cex-data.hdf','cex-1d')
+    data1d = data1d.drop_duplicates()
+    series = data1d.closing[:-2]
+
+    # data1m = pd.read_hdf('cex-data.hdf','cex-1m')
+    # data1m = data1m.drop_duplicates()
+    # # rescale 1m to 15m
+    # data1m = data1m.set_index(pd.DatetimeIndex(data1m.datetime)).drop('datetime',1)
+    # data15m = data1m.drop('volume',1).resample('15Min').agg({'opening':'first','high':'max','low':'min','closing':'last'}).interpolate()
+
+    # series = data15m
+    # series = series.closing
+
+    # run experiment
+    # model, forecasts, actual = experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps)
+
+    # try experiment 
+    newX = series[-1:]
+    realX = data1d.closing.iloc[-2]
+    scaler, data = prepare_data(newX,n_seq,exp=False)
+    
