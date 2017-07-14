@@ -245,7 +245,7 @@ def experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps):
     # print forecasts[-1]
 
     # plot forecasts
-    plot_forecasts(series,actual,forecasts)
+    # plot_forecasts(series,actual,forecasts)
     return model,forecasts,actual
 
 def forecast_forward(series, model):
@@ -253,7 +253,7 @@ def forecast_forward(series, model):
     # reshape input pattern to [samples, timesteps, features]
     X = scaled_data[:,0]
     X = X.reshape(len(X),1,1)
-    print X.shape
+    print (X.shape)
     predictions = model.predict(X,batch_size=n_batch)
     
     # inverse transform forecasts
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     n_seq = 0.67 # no of test vals
     n_steps = 5
     # load data
-    # series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+    series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
     # series = pd.read_csv('sp500.csv',squeeze=True)
     # series = pd.read_csv('international-airline-passengers.csv', header=0,
                  # parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
@@ -289,9 +289,9 @@ if __name__ == '__main__':
     # series = series.closing
 
     # dummy data
-    length = 100
-    sequence = [i/float(length) for i in range(length)]
-    series = pd.Series(sequence)
+    # length = 100
+    # sequence = [i/float(length) for i in range(length)]
+    # series = pd.Series(sequence)
 
     # series = series[:-1]
     # run experiment
@@ -301,7 +301,7 @@ if __name__ == '__main__':
     predicted = forecast_forward(series, model)
     plt.figure()
     plt.plot(predicted)
-    print predicted[-1][0]
+    print (predicted[-1][0])
 
     pred = [x[0] for x in predicted]
     for i in range(n_steps):
@@ -309,9 +309,12 @@ if __name__ == '__main__':
         predicted = forecast_forward(series, model)
         pred.append(predicted[-1][0])
 
-    plt.plot(pred)
+    plt.plot(actual,label='test data')
+    plt.plot(forecasts,label='predicted data')
+    plt.plot(pred,label='forward pred')
+    plt.legend()
     plt.show()
-    print pred
+    print (pred)
 
 
 
