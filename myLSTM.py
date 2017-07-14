@@ -223,9 +223,9 @@ def experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps):
     # prepare data
     scaler, train, test = prepare_data(series,n_seq,exp=True)
     # fit model
-    # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
+    model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
     # model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
-    model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
+    # model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
 
     # forecast forward
     forecasts = forecast_lstm(model, test, n_batch)
@@ -264,17 +264,18 @@ def forecast_forward(series, model):
 
 if __name__ == '__main__':
     # init values
-    n_epochs = 5
+    n_epochs = 10
     n_batch = 1
     n_neurons = 4
     n_lag = 1 # columns
     n_seq = 0.67 # no of test vals
-    n_steps = 5
+    n_steps = 1
     # load data
-    series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+    # series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
     # series = pd.read_csv('sp500.csv',squeeze=True)
     # series = pd.read_csv('international-airline-passengers.csv', header=0,
-                 # parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
+    #              parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
+    series = pd.read_csv('sinwave.csv',header=0,squeeze=True)
     # data1d = pd.read_hdf('cex-data.hdf','cex-1d')
     # data1d = data1d.drop_duplicates()
     # series = data1d.closing[:-2]
@@ -289,18 +290,19 @@ if __name__ == '__main__':
     # series = series.closing
 
     # dummy data
-    # length = 100
+    # length = 1000
     # sequence = [i/float(length) for i in range(length)]
     # series = pd.Series(sequence)
 
-    # series = series[:-1]
+    s = series
+    series = series[:-n_steps]
     # run experiment
     model, forecasts, actual = experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps)
 
     # try experiment 
     predicted = forecast_forward(series, model)
     plt.figure()
-    plt.plot(predicted)
+    # plt.plot(predicted)
     print (predicted[-1][0])
 
     pred = [x[0] for x in predicted]
@@ -308,14 +310,14 @@ if __name__ == '__main__':
         series = pd.Series(pred)
         predicted = forecast_forward(series, model)
         pred.append(predicted[-1][0])
+        # print(pred)
 
-    plt.plot(actual,label='test data')
+    # plt.plot(actual,label='test data')
+    plt.plot(s.values[-(len(forecasts)+n_steps):],label='actual data')
     plt.plot(forecasts,label='predicted data')
-    plt.plot(pred,label='forward pred')
+    plt.plot(pred[-(len(forecasts)+n_steps):],label='forward pred')
     plt.legend()
     plt.show()
-    print (pred)
-
 
 
     #################################3
