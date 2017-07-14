@@ -226,43 +226,58 @@ def experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps):
     # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
     # model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
     model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
+
     # forecast forward
     forecasts = forecast_lstm(model, test, n_batch)
     # forecast sliding
     # forecasts = forecast_lstm_sliding(model, test, n_batch, n_steps)
+
     # inverse transform forecasts and test
     forecasts = inverse_transform(series,forecasts,scaler,len(test))
     actual = [row[n_lag:] for row in test]
     actual = inverse_transform(series,actual,scaler,len(test))
     # original = [row[0:] for row in test]
+
     # evaluate forecasts
-    evaluate_forecasts(actual, forecasts, n_lag, len(test))
+    # evaluate_forecasts(actual, forecasts, n_lag, len(test))
     # print series.values[-1]
     # print actual[-1]
     # print forecasts[-1]
+
     # plot forecasts
     plot_forecasts(series,actual,forecasts)
     return model,forecasts,actual
 
+def forecast_forward(series, model):
+    scaler, scaled_data = prepare_data(series,n_seq=0,exp=False)
+    # reshape input pattern to [samples, timesteps, features]
+    X = scaled_data[:,0]
+    X = X.reshape(len(X),1,1)
+    print X.shape
+    predictions = model.predict(X,batch_size=n_batch)
+    
+    # inverse transform forecasts
+    predictions = inverse_transform(series,predictions,scaler,len(scaled_data))
+    return predictions
 
 
 
 if __name__ == '__main__':
     # init values
-    n_epochs = 500
+    n_epochs = 5
     n_batch = 1
     n_neurons = 4
     n_lag = 1 # columns
     n_seq = 0.67 # no of test vals
-    n_steps = 10
+    n_steps = 5
     # load data
     # series = pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
     # series = pd.read_csv('sp500.csv',squeeze=True)
     # series = pd.read_csv('international-airline-passengers.csv', header=0,
                  # parse_dates=[0], index_col=0, squeeze=True, date_parser=parser2)
-    data1d = pd.read_hdf('cex-data.hdf','cex-1d')
-    data1d = data1d.drop_duplicates()
-    series = data1d.closing[:-2]
+    # data1d = pd.read_hdf('cex-data.hdf','cex-1d')
+    # data1d = data1d.drop_duplicates()
+    # series = data1d.closing[:-2]
 
     # data1m = pd.read_hdf('cex-data.hdf','cex-1m')
     # data1m = data1m.drop_duplicates()
@@ -273,11 +288,60 @@ if __name__ == '__main__':
     # series = data15m
     # series = series.closing
 
+    # dummy data
+    length = 100
+    sequence = [i/float(length) for i in range(length)]
+    series = pd.Series(sequence)
+
+    # series = series[:-1]
     # run experiment
-    # model, forecasts, actual = experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps)
+    model, forecasts, actual = experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps)
 
     # try experiment 
-    newX = series[-1:]
-    realX = data1d.closing.iloc[-2]
-    scaler, data = prepare_data(newX,n_seq,exp=False)
+    predicted = forecast_forward(series, model)
+    plt.figure()
+    plt.plot(predicted)
+    print predicted[-1][0]
+
+    pred = [x[0] for x in predicted]
+    for i in range(n_steps):
+        series = pd.Series(pred)
+        predicted = forecast_forward(series, model)
+        pred.append(predicted[-1][0])
+
+    plt.plot(pred)
+    plt.show()
+    print pred
+
+
+
+    #################################3
+        # prepare data
+    # scaler, train, test = prepare_data(series,n_seq,exp=True)
+    # print train.shape
+    # print test.shape
+    # fit model
+    # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
+    # model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
+    # model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
+
+    # forecast forward
+    # forecasts = forecast_lstm(model, test, n_batch)
+    # forecast sliding
+    # forecasts = forecast_lstm_sliding(model, test, n_batch, n_steps)
+
+    # inverse transform forecasts and test
+    # forecasts = inverse_transform(series,forecasts,scaler,len(test))
+    # actual = [row[n_lag:] for row in test]
+    # actual = inverse_transform(series,actual,scaler,len(test))
+    # original = [row[0:] for row in test]
+
+    # evaluate forecasts
+    # evaluate_forecasts(actual, forecasts, n_lag, len(test))
+    # print series.values[-1]
+    # print actual[-1]
+    # print forecasts[-1]
+
+    # plot forecasts
+    # plot_forecasts(series,actual,forecasts)
     
