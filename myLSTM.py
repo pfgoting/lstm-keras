@@ -66,6 +66,10 @@ def fit_lstm_stateful(train, n_batch, nb_epoch, n_neurons, n_lag):
     # reshape training into [samples, timesteps, features]
     X, y = train[:, 0:n_lag], train[:, n_lag:]
     X = X.reshape(X.shape[0], 1, X.shape[1])
+    print(y)
+    print(y.shape)
+    print(y.shape[1])
+
     # design network
     model = Sequential()
     model.add(LSTM(n_neurons, batch_input_shape=(n_batch, X.shape[1], X.shape[2]), stateful=True))
@@ -211,7 +215,7 @@ def evaluate_forecasts(test, forecasts, n_lag, n_seq):
         print('t+%d RMSE: %f' % (len(test), rmse))
 
 # plotting
-def plot_forecasts(series,actual,forecasts):
+def plot_forecasts(actual,forecasts):
     plt.figure()
     # plt.plot(series.values[-len(actual):],label='original data')
     plt.plot(actual,label='test data')
@@ -223,8 +227,8 @@ def experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps):
     # prepare data
     scaler, train, test = prepare_data(series,n_seq,exp=True)
     # fit model
-    model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
-    # model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
+    # model = fit_lstm_jakob(train,n_batch,n_epochs,n_neurons,n_lag)
+    model = fit_lstm_stateful(train,n_batch,n_epochs,n_neurons,n_lag)
     # model = fit_lstm_stateless(train,n_batch,n_epochs,n_neurons,n_lag)
 
     # forecast forward
@@ -298,26 +302,26 @@ if __name__ == '__main__':
     series = series[:-n_steps]
     # run experiment
     model, forecasts, actual = experiment(series,n_epochs,n_batch,n_neurons,n_lag,n_seq,n_steps)
+    plot_forecasts(actual,forecasts)
+    # # try experiment 
+    # predicted = forecast_forward(series, model)
+    # plt.figure()
+    # # plt.plot(predicted)
+    # print (predicted[-1][0])
 
-    # try experiment 
-    predicted = forecast_forward(series, model)
-    plt.figure()
-    # plt.plot(predicted)
-    print (predicted[-1][0])
+    # pred = [x[0] for x in predicted]
+    # for i in range(n_steps):
+    #     series = pd.Series(pred)
+    #     predicted = forecast_forward(series, model)
+    #     pred.append(predicted[-1][0])
+    #     # print(pred)
 
-    pred = [x[0] for x in predicted]
-    for i in range(n_steps):
-        series = pd.Series(pred)
-        predicted = forecast_forward(series, model)
-        pred.append(predicted[-1][0])
-        # print(pred)
-
-    # plt.plot(actual,label='test data')
-    plt.plot(s.values[-(len(forecasts)+n_steps):],label='actual data')
-    plt.plot(forecasts,label='predicted data')
-    plt.plot(pred[-(len(forecasts)+n_steps):],label='forward pred')
-    plt.legend()
-    plt.show()
+    # # plt.plot(actual,label='test data')
+    # plt.plot(s.values[-(len(forecasts)+n_steps):],label='actual data')
+    # plt.plot(forecasts,label='predicted data')
+    # plt.plot(pred[-(len(forecasts)+n_steps):],label='forward pred')
+    # plt.legend()
+    # plt.show()
 
 
     #################################3
